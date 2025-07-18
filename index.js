@@ -1,38 +1,37 @@
-const axios = require('axios');
-const qrcode = require('qrcode-terminal');
+import axios from 'axios';
+import dotenv from 'dotenv';
 
-const config = {
-  baseURL: 'https://wppconnect-server-1-64x1.onrender.com/api',
-  session: 'NERDWHATS_AMERICA',
-  token: 'token123' // mesmo valor que você colocou no config.json
-};
+dotenv.config();
 
-async function startSession() {
+const SERVER_URL = 'https://wppconnect-server-1-64x1.onrender.com';
+const SESSION_NAME = 'NERDWHATS_AMERICA';
+const TOKEN = 'token123';
+
+async function getQRCode() {
   try {
-    const response = await axios.post(
-      `${config.baseURL}/${config.session}/start-session`,
-      {
-        webhook: '',
-        waitQrCode: true
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${config.token}`,
-          'Content-Type': 'application/json'
-        }
-      }
+    // 1. Iniciar a sessão
+    await axios.post(
+      `${SERVER_URL}/api/${SESSION_NAME}/start-session`,
+      { webhook: '', waitQrCode: true },
+      { headers: { Authorization: `Bearer ${TOKEN}` } }
+    );
+    console.log('✅ Sessão iniciada com sucesso.');
+
+    // 2. Obter o QR Code
+    const response = await axios.get(
+      `${SERVER_URL}/api/${SESSION_NAME}/qrcode-session`,
+      { headers: { Authorization: `Bearer ${TOKEN}` } }
     );
 
-    const qrCode = response.data.qrcode;
-    if (qrCode) {
-      console.log('Escaneie o QR Code abaixo para conectar o WhatsApp:');
-      qrcode.generate(qrCode, { small: true });
+    if (response.data.qrcode) {
+      console.log('📲 Aponte a câmera do WhatsApp para este QR Code:\n');
+      console.log(response.data.qrcode);
     } else {
-      console.log('Sessão iniciada ou QR Code não retornado.');
+      console.log('⚠️ QR Code não encontrado. Verifique se a sessão está ativa.');
     }
   } catch (error) {
-    console.error('Erro ao iniciar sessão:', error.response?.data || error.message);
+    console.error('❌ Erro ao obter QR Code:', error.response?.data || error.message);
   }
 }
 
-startSession();
+getQRCode();
