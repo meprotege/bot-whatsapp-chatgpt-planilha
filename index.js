@@ -1,15 +1,13 @@
-import express from 'express';
-import { create } from '@wppconnect-team/wppconnect';
+const express = require('express');
+const { create } = require('@wppconnect-team/wppconnect');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Rota para verificação no Render
 app.get('/', (req, res) => {
   res.send('Bot do WhatsApp está rodando!');
 });
 
-// Inicializa o bot WPPConnect
 create({
   session: 'NERDWHATS_AMERICA',
   headless: true,
@@ -17,8 +15,7 @@ create({
   puppeteerOptions: {
     executablePath: 'google-chrome-stable'
   }
-})
-.then((client) => {
+}).then((client) => {
   console.log('✅ Bot iniciado com sucesso');
 
   client.onMessage(async (message) => {
@@ -26,8 +23,7 @@ create({
       await client.sendText(message.from, 'Olá! 👋 Como posso ajudar?');
     }
   });
-})
-.catch((error) => {
+}).catch((error) => {
   console.error('Erro ao iniciar o bot:', error);
 });
 
