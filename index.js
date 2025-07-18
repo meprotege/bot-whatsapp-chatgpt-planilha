@@ -1,48 +1,36 @@
-const express = require('express');
-const { create } = require('@wppconnect-team/wppconnect');
-const config = require('./config.json'); // ✅ Corrigido
+import express from 'express';
+import { create } from '@wppconnect-team/wppconnect';
+
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Rota para verificação no Render
+app.get('/', (req, res) => {
+  res.send('Bot do WhatsApp está rodando!');
+});
 
+// Inicializa o bot WPPConnect
 create({
   session: 'NERDWHATS_AMERICA',
-  catchQR: (base64Qr, asciiQR, attempts, urlCode) => {
-    console.log('QR Code gerado:');
-    console.log(asciiQR);
-  },
-  statusFind: (statusSession, session) => {
-    console.log(`Status da sessão ${session}: ${statusSession}`);
-  },
   headless: true,
-  devtools: false,
-  useChrome: true,
-  debug: false,
-  tokenStore: 'file',
-  autoClose: false,
-  folderNameToken: './tokens',
-  disableWelcome: true,
-  port: config.port
-}).then((client) => start(client));
+  browserArgs: ['--no-sandbox'],
+  puppeteerOptions: {
+    executablePath: 'google-chrome-stable'
+  }
+})
+.then((client) => {
+  console.log('✅ Bot iniciado com sucesso');
 
-function start(client) {
-  app.post('/send-message', async (req, res) => {
-    const { phone, message } = req.body;
-
-    if (!phone || !message) {
-      return res.status(400).send({ error: 'Parâmetros ausentes' });
-    }
-
-    try {
-      await client.sendText(`${phone}@c.us`, message);
-      return res.status(200).send({ success: true });
-    } catch (err) {
-      console.error('Erro ao enviar mensagem:', err);
-      return res.status(500).send({ error: 'Erro ao enviar mensagem' });
+  client.onMessage(async (message) => {
+    if (message.body.toLowerCase() === 'oi') {
+      await client.sendText(message.from, 'Olá! 👋 Como posso ajudar?');
     }
   });
+})
+.catch((error) => {
+  console.error('Erro ao iniciar o bot:', error);
+});
 
-  app.listen(config.port, config.host, () => {
-    console.log(`Servidor rodando em http://${config.host}:${config.port}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
