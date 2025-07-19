@@ -1,32 +1,90 @@
-const express = require('express');
+const fs = require('fs');
+const { google } = require('googleapis');
 const { create } = require('@wppconnect-team/wppconnect');
+const { Configuration, OpenAIApi } = require('openai');
+const axios = require('axios');
+const config = require('./config.json');
+require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const enviados = fs.existsSync('./enviados.json')
+  ? JSON.parse(fs.readFileSync('./enviados.json'))
+  : [];
 
-app.get('/', (req, res) => {
-  res.send('Bot do WhatsApp está rodando!');
+const auth = new google.auth.GoogleAuth({
+  credentials: require('./credenciais-google.json'), // você vai subir esse depois
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
+
+const sheets = google.sheets({ version: 'v4', auth });
+
+const SHEET_ENTRADA = '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
+const SHEET_SAIDA = '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
+
+const openai = new OpenAIApi(new Configuration({ apiKey: process.env.OPENAI_KEY }));
+
+function salvarEnviado(tel) {
+  enviados.push(tel);
+  fs.writeFileSync('./enviados.json', JSON.stringify(enviados, null, 2));
+}
+
+async function gerarMensagem(nome, origem) {
+  const prompt = fs.readFileSync('./prompts/ia-agente.txt', 'utf-8');
+  const response = await openai.createChatCompletion({
+    model: 'gpt-4',
+    messages: [
+      { role: 'system', content: prompt },
+      { role: 'user', content: `Contato: ${nome}. Origem: ${origem}` },
+    ],
+    temperature: 0.7,
+  });
+  return response.data.choices[0].message.content.trim();
+}
+
+async function lerPlanilha() {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ENTRADA,
+    range: 'A2:L',
+  });
+
+  const linhas = res.data.values || [];
+  return linhas.filter(([tel, entrada, resposta]) => {
+    if (!tel || enviados.includes(tel)) return false;
+    if (!resposta) return false;
+    const r = resposta.toLowerCase();
+    return r.includes('sim') || r.includes('ok') || r.includes('claro');
+  });
+}
+
+async function registrarNaSaida(nome, telefone, mensagem) {
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_SAIDA,
+    range: 'A1',
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[new Date().toISOString(), nome, telefone, mensagem]],
+    },
+  });
+}
+
+async function iniciarEnvio(client) {
+  const contatos = await lerPlanilha();
+  for (const linha of contatos) {
+    const [tel, , , , , nome, , , cidade, estado, cep, origem] = linha;
+    const numero = tel.replace(/\D/g, '');
+    const mensagem = await gerarMensagem(nome || 'contato', origem || 'lead');
+    await client.sendText(`${numero}@c.us`, mensagem);
+    salvarEnviado(tel);
+    await registrarNaSaida(nome, tel, mensagem);
+    console.log(`✅ Mensagem enviada para ${nome} - ${numero}`);
+  }
+}
 
 create({
-  session: 'NERDWHATS_AMERICA',
+  session: 'DianaIA',
   headless: true,
   browserArgs: ['--no-sandbox'],
-  puppeteerOptions: {
-    executablePath: 'google-chrome-stable'
-  }
+  puppeteerOptions: { executablePath: 'google-chrome-stable' },
 }).then((client) => {
-  console.log('✅ Bot iniciado com sucesso');
-
-  client.onMessage(async (message) => {
-    if (message.body.toLowerCase() === 'oi') {
-      await client.sendText(message.from, 'Olá! 👋 Como posso ajudar?');
-    }
-  });
-}).catch((error) => {
-  console.error('Erro ao iniciar o bot:', error);
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log('🤖 Bot conectado!');
+  setInterval(() => iniciarEnvio(client), 60 * 1000); // A cada 1 minuto
 });
