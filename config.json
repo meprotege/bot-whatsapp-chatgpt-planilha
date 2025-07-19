@@ -1,5 +1,8 @@
 {
   "secretKey": "token123",
   "host": "0.0.0.0",
-  "port": 3000
+  "port": 21465,
+  "googleApiKey": "AIzaSyCCFvCCI-KAU906cG5aSw-b6uQdDaUzga4",
+  "planilhaEntradaId": "1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4",
+  "planilhaRetornoId": "1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU"
 }
