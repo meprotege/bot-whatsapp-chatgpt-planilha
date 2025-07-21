@@ -1,3 +1,5 @@
+console.log("==== BOT DIANA INICIOU! ====");
+
 const fs = require('fs');
 const { google } = require('googleapis');
 const { create } = require('@wppconnect-team/wppconnect');
