@@ -12,14 +12,14 @@ const enviados = fs.existsSync('./enviados.json')
   : [];
 
 const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON), // subir manualmente no Render depois
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON), // VARIÁVEL DE AMBIENTE NO RENDER
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-const SHEET_ENTRADA = '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
-const SHEET_SAIDA = '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
+const SHEET_ENTRADA = config.planilhaEntradaId || '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
+const SHEET_SAIDA = config.planilhaRetornoId || '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
 
 const openai = new OpenAIApi(new Configuration({
   apiKey: process.env.OPENAI_KEY,
@@ -30,14 +30,15 @@ function salvarEnviado(tel) {
   fs.writeFileSync('./enviados.json', JSON.stringify(enviados, null, 2));
 }
 
-async function gerarMensagem(nome, origem) {
+async function gerarMensagem(nome, origem, textoUsuario = '') {
   const prompt = fs.readFileSync('./prompts/ia-agente.txt', 'utf-8');
+  const messages = [
+    { role: 'system', content: prompt },
+    { role: 'user', content: `Contato: ${nome}. Origem: ${origem}. Mensagem: ${textoUsuario}` }
+  ];
   const response = await openai.createChatCompletion({
     model: 'gpt-4',
-    messages: [
-      { role: 'system', content: prompt },
-      { role: 'user', content: `Contato: ${nome}. Origem: ${origem}` },
-    ],
+    messages,
     temperature: 0.7,
   });
   return response.data.choices[0].message.content.trim();
@@ -90,4 +91,43 @@ create({
 }).then((client) => {
   console.log('🤖 Bot Diana conectado com sucesso!');
   setInterval(() => iniciarEnvio(client), 60 * 1000); // Executa a cada 1 minuto
+
+  // NOVO: Listener para responder clientes de forma reativa
+  client.onMessage(async (message) => {
+    // Ignora grupos, só responde privados
+    if (message.isGroupMsg) return;
+
+    // Extrai telefone e texto
+    const numero = message.from.split('@')[0];
+    const texto = message.body || '';
+
+    // Busca nome e origem na planilha de entrada
+    let nome = 'contato';
+    let origem = 'lead';
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ENTRADA,
+        range: 'A2:L',
+      });
+      const linhas = res.data.values || [];
+      const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
+      if (lead) {
+        nome = lead[5] || 'contato';  // Coluna nome
+        origem = lead[11] || 'lead';  // Coluna origem
+      }
+    } catch (e) {
+      console.log('Erro ao buscar lead:', e);
+    }
+
+    // Gera resposta Diana
+    const resposta = await gerarMensagem(nome, origem, texto);
+
+    // Responde no WhatsApp
+    await client.sendText(message.from, resposta);
+
+    // Salva registro na planilha de saída
+    await registrarNaSaida(nome, numero, resposta);
+
+    console.log(`💬 Resposta enviada para ${nome} (${numero}): ${texto}`);
+  });
 });
