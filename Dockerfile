@@ -18,4 +18,4 @@ RUN npm install
 EXPOSE 21465
 
 # Comando padrão de inicialização
-CMD [ "npm", "start" ]
+CMD [ "node", "index.js" ]
