@@ -4,7 +4,7 @@ try {
   const fs = require('fs');
   const { google } = require('googleapis');
   const { create } = require('@wppconnect-team/wppconnect');
-  const { Configuration, OpenAIApi } = require('openai');
+  const OpenAI = require('openai');  // <- ATUALIZAÇÃO AQUI!
   require('dotenv').config();
   const config = require('./config.json');
 
@@ -24,27 +24,29 @@ try {
   const SHEET_ENTRADA = config.planilhaEntradaId || '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
   const SHEET_SAIDA = config.planilhaRetornoId || '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
 
-  const openai = new OpenAIApi(new Configuration({
+  // OpenAI v4.x instância:
+  const openai = new OpenAI({
     apiKey: process.env.OPENAI_KEY,
-  }));
+  });
 
   function salvarEnviado(tel) {
     enviados.push(tel);
     fs.writeFileSync('./enviados.json', JSON.stringify(enviados, null, 2));
   }
 
+  // --- ATUALIZEI ESSA FUNÇÃO:
   async function gerarMensagem(nome, origem, textoUsuario = '') {
     const prompt = fs.readFileSync('./prompts/ia-agente.txt', 'utf-8');
     const messages = [
       { role: 'system', content: prompt },
       { role: 'user', content: `Contato: ${nome}. Origem: ${origem}. Mensagem: ${textoUsuario}` }
     ];
-    const response = await openai.createChatCompletion({
+    const response = await openai.chat.completions.create({
       model: 'gpt-4',
       messages,
       temperature: 0.7,
     });
-    return response.data.choices[0].message.content.trim();
+    return response.choices[0].message.content.trim();
   }
 
   async function lerPlanilha() {
