@@ -1,12 +1,11 @@
 const http = require('http');
 
-// Usa a porta do ambiente (Render define automaticamente), padrão 3000
 const PORT = process.env.PORT || 3000;
-
 console.log("==== TESTE COM HTTP SERVER INICIOU ====");
 
 const server = http.createServer((req, res) => {
-  res.end("Bot Diana ativo!");
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end("Bot Diana ativo!\n");
 });
 
 server.listen(PORT, () => {
