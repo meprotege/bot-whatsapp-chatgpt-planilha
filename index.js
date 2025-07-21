@@ -2,16 +2,17 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const { create } = require('@wppconnect-team/wppconnect');
 const { Configuration, OpenAIApi } = require('openai');
-const axios = require('axios');
-const config = require('./config.json');
 require('dotenv').config();
+const config = require('./config.json');
+
+console.log('🚀 Iniciando bot Diana...');
 
 const enviados = fs.existsSync('./enviados.json')
   ? JSON.parse(fs.readFileSync('./enviados.json'))
   : [];
 
 const auth = new google.auth.GoogleAuth({
-  credentials: require('./credenciais-google.json'), // você vai subir esse depois
+  credentials: require('./credenciais-google.json'), // subir manualmente no Render depois
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
@@ -20,7 +21,9 @@ const sheets = google.sheets({ version: 'v4', auth });
 const SHEET_ENTRADA = '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
 const SHEET_SAIDA = '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
 
-const openai = new OpenAIApi(new Configuration({ apiKey: process.env.OPENAI_KEY }));
+const openai = new OpenAIApi(new Configuration({
+  apiKey: process.env.OPENAI_KEY,
+}));
 
 function salvarEnviado(tel) {
   enviados.push(tel);
@@ -80,11 +83,11 @@ async function iniciarEnvio(client) {
 }
 
 create({
-  session: 'DianaIA',
+  session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
   headless: true,
   browserArgs: ['--no-sandbox'],
   puppeteerOptions: { executablePath: 'google-chrome-stable' },
 }).then((client) => {
-  console.log('🤖 Bot conectado!');
-  setInterval(() => iniciarEnvio(client), 60 * 1000); // A cada 1 minuto
+  console.log('🤖 Bot Diana conectado com sucesso!');
+  setInterval(() => iniciarEnvio(client), 60 * 1000); // Executa a cada 1 minuto
 });
