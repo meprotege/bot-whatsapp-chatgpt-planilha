@@ -12,7 +12,7 @@ const enviados = fs.existsSync('./enviados.json')
   : [];
 
 const auth = new google.auth.GoogleAuth({
-  credentials: require('./credenciais-google.json'), // subir manualmente no Render depois
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON), // subir manualmente no Render depois
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
