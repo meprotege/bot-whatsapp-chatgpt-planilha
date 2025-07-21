@@ -14,8 +14,8 @@ COPY . .
 # Instala dependências do Node.js
 RUN npm install
 
-# Exponha a porta se desejar, exemplo: 21465
-EXPOSE 21465
+# Expõe a porta 3000, que é a padrão para Web Service em cloud
+EXPOSE 3000
 
 # Comando padrão de inicialização
 CMD [ "node", "index.js" ]
