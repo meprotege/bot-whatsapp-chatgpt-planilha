@@ -4,7 +4,7 @@ try {
   const fs = require('fs');
   const { google } = require('googleapis');
   const { create } = require('@wppconnect-team/wppconnect');
-  const OpenAI = require('openai');  // <- ATUALIZAÇÃO AQUI!
+  const OpenAI = require('openai');
   require('dotenv').config();
   const config = require('./config.json');
 
@@ -15,7 +15,7 @@ try {
     : [];
 
   const auth = new google.auth.GoogleAuth({
-    credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON), // VARIÁVEL DE AMBIENTE NO RENDER
+    credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
@@ -24,7 +24,6 @@ try {
   const SHEET_ENTRADA = config.planilhaEntradaId || '1M8Q0fcM6Is7LBYH7Zg-R5nPqgsrE6_dOkE5wK7VwlX4';
   const SHEET_SAIDA = config.planilhaRetornoId || '1VRgKWycTAsOD5worfR6VejpMlMTgFbLAe8pfAs81gDU';
 
-  // OpenAI v4.x instância:
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_KEY,
   });
@@ -34,7 +33,6 @@ try {
     fs.writeFileSync('./enviados.json', JSON.stringify(enviados, null, 2));
   }
 
-  // --- ATUALIZEI ESSA FUNÇÃO:
   async function gerarMensagem(nome, origem, textoUsuario = '') {
     const prompt = fs.readFileSync('./prompts/ia-agente.txt', 'utf-8');
     const messages = [
@@ -88,11 +86,13 @@ try {
     }
   }
 
+  // ALTERAÇÃO: autoClose: 60 adicionado aqui!
   create({
     session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
     headless: true,
+    autoClose: 60, // mantém o QR Code aberto por 60 segundos (1 minuto)
     browserArgs: ['--no-sandbox'],
-    puppeteerOptions: { executablePath: 'google-chrome-stable' },
+    puppeteerOptions: { executablePath: 'google-chrome-stable' }
   }).then((client) => {
     console.log('🤖 Bot Diana conectado com sucesso!');
     setInterval(() => iniciarEnvio(client), 60 * 1000); // Executa a cada 1 minuto
@@ -117,8 +117,8 @@ try {
         const linhas = res.data.values || [];
         const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
         if (lead) {
-          nome = lead[5] || 'contato';  // Coluna nome
-          origem = lead[11] || 'lead';  // Coluna origem
+          nome = lead[5] || 'contato';
+          origem = lead[11] || 'lead';
         }
       } catch (e) {
         console.log('Erro ao buscar lead:', e);
