@@ -107,42 +107,44 @@ try {
 
     // NOVO: Listener para responder clientes de forma reativa
     client.onMessage(async (message) => {
-      // Ignora grupos, só responde privados
-      if (message.isGroupMsg) return;
+  // Responde apenas mensagens privadas (ignora grupos)
+  if (message.isGroupMsg) return;
 
-      // Extrai telefone e texto
-      const numero = message.from.split('@')[0];
-      const texto = message.body || '';
+  // Extrai telefone e texto
+  const numero = message.from.split('@')[0];
+  const texto = message.body || '';
 
-      // Busca nome e origem na planilha de entrada
-      let nome = 'contato';
-      let origem = 'lead';
-      try {
-        const res = await sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ENTRADA,
-          range: 'A2:L',
-        });
-        const linhas = res.data.values || [];
-        const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
-        if (lead) {
-          nome = lead[5] || 'contato';
-          origem = lead[11] || 'lead';
-        }
-      } catch (e) {
-        console.log('Erro ao buscar lead:', e);
-      }
+  // Por padrão
+  let nome = 'contato';
+  let origem = 'lead';
 
-      // Gera resposta Diana
-      const resposta = await gerarMensagem(nome, origem, texto);
-
-      // Responde no WhatsApp
-      await client.sendText(message.from, resposta);
-
-      // Salva registro na planilha de saída
-      await registrarNaSaida(nome, numero, resposta);
-
-      console.log(`💬 Resposta enviada para ${nome} (${numero}): ${texto}`);
+  // (Opcional) Tenta buscar nome e origem na planilha de entrada
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ENTRADA,
+      range: 'A2:L',
     });
+    const linhas = res.data.values || [];
+    const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
+    if (lead) {
+      nome = lead[5] || 'contato';
+      origem = lead[11] || 'lead';
+    }
+  } catch (e) {
+    console.log('Erro ao buscar lead:', e);
+  }
+
+  // Gera resposta Diana (sempre responde)
+  const resposta = await gerarMensagem(nome, origem, texto);
+
+  // Responde no WhatsApp para qualquer número
+  await client.sendText(message.from, resposta);
+
+  // Salva registro na planilha de saída
+  await registrarNaSaida(nome, numero, resposta);
+
+  console.log(`💬 Resposta enviada para ${nome} (${numero}): ${texto}`);
+});
   });
 
   // === KEEP-ALIVE HTTP SERVER para Render ===
