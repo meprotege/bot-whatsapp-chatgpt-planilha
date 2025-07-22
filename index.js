@@ -86,11 +86,11 @@ try {
     }
   }
 
-  // ALTERAÇÃO: autoClose: 60 adicionado aqui!
+  // ALTERAÇÃO: autoClose: 30 adicionado aqui!
   create({
     session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
     headless: false,
-    autoClose: 60, // mantém o QR Code aberto por 60 segundos (1 minuto)
+    autoClose: 30, // mantém o QR Code aberto por 30 segundos (1 minuto)
     browserArgs: ['--no-sandbox'],
     puppeteerOptions: { executablePath: 'google-chrome-stable' }
   }).then((client) => {
