@@ -86,65 +86,83 @@ try {
     }
   }
 
-  // ALTERAÇÃO: autoClose: 30 adicionado aqui!
   create({
-  session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
-  headless: true,
-  browserArgs: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-accelerated-2d-canvas',
-    '--no-zygote',
-    '--disable-gpu',
-    '--single-process',
-    '--disable-software-rasterizer'
-  ],
-  puppeteerOptions: { executablePath: 'google-chrome-stable' },
-}) .then((client) => {
+    session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
+    headless: true,
+    browserArgs: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-zygote',
+      '--disable-gpu',
+      '--single-process',
+      '--disable-software-rasterizer'
+    ],
+    puppeteerOptions: { executablePath: 'google-chrome-stable' },
+  }).then((client) => {
     console.log('🤖 Bot Diana conectado com sucesso!');
     setInterval(() => iniciarEnvio(client), 60 * 1000); // Executa a cada 1 minuto
 
-    // NOVO: Listener para responder clientes de forma reativa
+    // ====== LISTENER A - LOGS DETALHADOS + IA ======
     client.onMessage(async (message) => {
-  // Responde apenas mensagens privadas (ignora grupos)
-  if (message.isGroupMsg) return;
+      if (message.isGroupMsg) return;
 
-  // Extrai telefone e texto
-  const numero = message.from.split('@')[0];
-  const texto = message.body || '';
+      console.log('📩 Mensagem recebida:', message.body, '| de:', message.from);
 
-  // Por padrão
-  let nome = 'contato';
-  let origem = 'lead';
+      const numero = message.from.split('@')[0];
+      const texto = message.body || '';
 
-  // (Opcional) Tenta buscar nome e origem na planilha de entrada
-  try {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ENTRADA,
-      range: 'A2:L',
+      let nome = 'contato';
+      let origem = 'lead';
+
+      try {
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ENTRADA,
+          range: 'A2:L',
+        });
+        const linhas = res.data.values || [];
+        const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
+        if (lead) {
+          nome = lead[5] || 'contato';
+          origem = lead[11] || 'lead';
+        }
+      } catch (e) {
+        console.log('❗ Erro ao buscar lead na planilha:', e);
+      }
+
+      try {
+        console.log('🧠 Enviando mensagem para IA:', texto);
+        const resposta = await gerarMensagem(nome, origem, texto);
+        console.log('🤖 Resposta IA:', resposta);
+
+        await client.sendText(message.from, resposta);
+        await registrarNaSaida(nome, numero, resposta);
+
+        console.log(`✅ Resposta enviada para ${nome} (${numero}): ${texto}`);
+      } catch (err) {
+        console.error('❗ Erro ao gerar/responder mensagem:', err);
+      }
     });
-    const linhas = res.data.values || [];
-    const lead = linhas.find(linha => (linha[0] || '').replace(/\D/g, '') === numero);
-    if (lead) {
-      nome = lead[5] || 'contato';
-      origem = lead[11] || 'lead';
-    }
-  } catch (e) {
-    console.log('Erro ao buscar lead:', e);
-  }
 
-  // Gera resposta Diana (sempre responde)
-  const resposta = await gerarMensagem(nome, origem, texto);
+    // ====== LISTENER B - TESTE COM RESPOSTA FIXA ======
+    // DESCOMENTE PARA TESTAR RESPOSTA FIXA
+    /*
+    client.onMessage(async (message) => {
+      if (message.isGroupMsg) return;
 
-  // Responde no WhatsApp para qualquer número
-  await client.sendText(message.from, resposta);
+      console.log('📩 Mensagem recebida:', message.body, '| de:', message.from);
 
-  // Salva registro na planilha de saída
-  await registrarNaSaida(nome, numero, resposta);
+      const resposta = "Recebi sua mensagem!";
 
-  console.log(`💬 Resposta enviada para ${nome} (${numero}): ${texto}`);
-});
+      try {
+        await client.sendText(message.from, resposta);
+        console.log(`✅ Resposta enviada para ${message.from}`);
+      } catch (err) {
+        console.error('❗ Erro ao responder mensagem:', err);
+      }
+    });
+    */
   });
 
   // === KEEP-ALIVE HTTP SERVER para Render ===
