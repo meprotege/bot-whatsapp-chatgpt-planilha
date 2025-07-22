@@ -88,12 +88,20 @@ try {
 
   // ALTERAÇÃO: autoClose: 30 adicionado aqui!
   create({
-    session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
-    headless: false,
-    autoClose: 30, // mantém o QR Code aberto por 30 segundos (1 minuto)
-    browserArgs: ['--no-sandbox'],
-    puppeteerOptions: { executablePath: 'google-chrome-stable' }
-  }).then((client) => {
+  session: process.env.SESSION_NAME || 'NERDWHATS_AMERICA',
+  headless: true,
+  browserArgs: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--no-zygote',
+    '--disable-gpu',
+    '--single-process',
+    '--disable-software-rasterizer'
+  ],
+  puppeteerOptions: { executablePath: 'google-chrome-stable' },
+}) .then((client) => {
     console.log('🤖 Bot Diana conectado com sucesso!');
     setInterval(() => iniciarEnvio(client), 60 * 1000); // Executa a cada 1 minuto
 
